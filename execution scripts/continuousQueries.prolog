@@ -61,6 +61,8 @@ continuousER(App) :-
   findall((F=V,L), (outputEntity(F=V),holdsFor(F=V,L),L\=[]), OELI), 
   findall((EE,TT), (outputEntity(EE),happensAt(EE,TT)), OELT),
   statistics(StatisticsFlag,[S2,_T2]), 
+  %%%%%%%%% log the intervals of the output entities in the first window
+  printRecognitions(ResultFileS, WM, WMPlus1),
   %%%%%%%%% compute the recognition time of the current window
   S is S2-S1, %S=T2,
   write(LogFileS, S),
