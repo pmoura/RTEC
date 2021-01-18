@@ -34,7 +34,7 @@ continuousER(App) :-
   % PreprocessingFlag (preprocessing or nopreprocessing), 
   % ClockTick: temporal distance between two consecutive time-points
   % SDEBatch: the input narrative size asserted in a single batch
-  handleApplication(Prolog, App, LogFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch),
+  handleApplication(Prolog, App, LogFile, ResultFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch),
   format("                                                                 
 8 888888888o. 8888888 8888888888 8 8888888888       ,o888888o.    
 8 8888    `88.      8 8888       8 8888            8888     `88.  
@@ -48,6 +48,7 @@ continuousER(App) :-
 8 8888     `88.     8 8888       8 888888888888     `8888888P'   
   "),
   open(LogFile, write, LogFileS),
+  open(ResultFile, write, ResultFileS),
   % initialise RTEC
   initialiseRecognition(StreamOrderFlag, PreprocessingFlag, ClockTick),
   % load the SDE of the current window
@@ -85,7 +86,7 @@ continuousER(App) :-
   % move to the next query-time
   CurrentTime is WM+Step,
   updateManySDE(WM, CurrentTime, SDEBatch),
-  querying(StatisticsFlag, LogFileS, WM, Step, CurrentTime, LastTime, [S], RecTimes, [InL], InputList, ([OutFVpairs],[OutLI],[OutLD]), (OutputListOutFVpairs,OutputListOutLI,OutputListOutLD), SDEBatch),
+  querying(StatisticsFlag, LogFileS, ResultFileS, WM, Step, CurrentTime, LastTime, [S], RecTimes, [InL], InputList, ([OutFVpairs],[OutLI],[OutLD]), (OutputListOutFVpairs,OutputListOutLI,OutputListOutLD), SDEBatch),
   % calculate and record the recognition time statistics
   list_stats(RecTimes,_,_,AvgTime,_,DevTime),
   nl(LogFileS), nl(LogFileS),
@@ -118,10 +119,10 @@ continuousER(App) :-
   writeln('========================================================='),
   close(LogFileS), !.
 
-querying(_StatisticsFlag, _LogFileS, _WM, _Step, CurrentTime, LastTime, RecTimes, RecTimes, InputList, InputList, OutputList, OutputList, _SDEBatch) :-
+querying(_StatisticsFlag, _LogFileS, _ResultFileS, _WM, _Step, CurrentTime, LastTime, RecTimes, RecTimes, InputList, InputList, OutputList, OutputList, _SDEBatch) :-
   CurrentTime > LastTime, !.
 
-querying(StatisticsFlag, LogFileS, WM, Step, CurrentTime, LastTime, InitRecTime, RecTimes, InitInput, InputList, (InitOutputOutFVpairs,InitOutputOutLI,InitOutputOutLD), OutputList, SDEBatch) :-
+querying(StatisticsFlag, LogFileS, ResultFileS, WM, Step, CurrentTime, LastTime, InitRecTime, RecTimes, InitInput, InputList, (InitOutputOutFVpairs,InitOutputOutLI,InitOutputOutLD), OutputList, SDEBatch) :-
   CurrentTimeMinusWM is CurrentTime-WM,
   write('Current Window                         	: ('), write(CurrentTimeMinusWM), write(', '), write(CurrentTime), writeln(']'),
   %%%%%%%%% compute the recognition time of the current window
@@ -130,6 +131,10 @@ querying(StatisticsFlag, LogFileS, WM, Step, CurrentTime, LastTime, InitRecTime,
   findall((F=V,L), (outputEntity(F=V),holdsFor(F=V,L),L\=[]), OELI),
   findall((EE,TT), (outputEntity(EE),happensAt(EE,TT)), OELT),
   statistics(StatisticsFlag,[S2,_T2]),
+  %%%
+  % log the computed intervals of output entities
+  %%%
+  printRecognitions(ResultFileS, CurrentTime, WM),
   %%%%%%%%% compute the recognition time of the current window
   S is S2-S1, %S=T2,
   writeResult(S, LogFileS),
@@ -155,7 +160,7 @@ querying(StatisticsFlag, LogFileS, WM, Step, CurrentTime, LastTime, InitRecTime,
   % move to the next query-time
   NewCurrentTime is CurrentTime+Step,
   updateManySDE(CurrentTime, NewCurrentTime, SDEBatch),
-  querying(StatisticsFlag, LogFileS, WM, Step, NewCurrentTime, LastTime, [S|InitRecTime], RecTimes, [InL|InitInput], InputList, ([OutFVpairs|InitOutputOutFVpairs],[OutLI|InitOutputOutLI],[OutLD|InitOutputOutLD]), OutputList, SDEBatch).
+  querying(StatisticsFlag, LogFileS, ResultFileS, WM, Step, NewCurrentTime, LastTime, [S|InitRecTime], RecTimes, [InL|InitInput], InputList, ([OutFVpairs|InitOutputOutFVpairs],[OutLI|InitOutputOutLI],[OutLD|InitOutputOutLD]), OutputList, SDEBatch).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -235,3 +240,40 @@ updateManySDE(Start, End, SDEBatch) :-
 	updateManySDE(NewStart, End, SDEBatch).
 
 updateManySDE(_, _, _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Log the recognised intervals
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% printRecognitions(+CEIntervalsStream, +CurrentTime, +WM)
+printRecognitions(CEIntervalsStream, CurrentTime, WM) :-
+  StartTime is CurrentTime-WM,
+  findall((F=V,L2), 
+    (
+    outputEntity(F=V),
+                holdsFor(F=V,L),
+                L\==[],
+                intersect_all([L,[(StartTime,CurrentTime)]],L2)
+                ), 
+              CEIntervals),
+  writeCEs(CEIntervalsStream, CEIntervals).
+
+writeCEs(ResultStream, []) :-
+  nl(ResultStream), !.
+writeCEs(ResultStream, [(_CE,[])|OtherCCs]) :-
+  writeCEs(ResultStream,OtherCCs).
+writeCEs(ResultStream,[(F=V,L)|OtherCCs]) :-
+    DType = 'predictions',
+    L \= [],
+    F =.. [FluentName|Args],
+      write(ResultStream,'recognitions('),
+      write(ResultStream,DType),
+      write(ResultStream,','),
+      write(ResultStream,FluentName),
+      write(ResultStream,','),
+      write(ResultStream,[Args,V]),
+      write(ResultStream,','),
+      write(ResultStream,L),
+      write(ResultStream,').'),
+      nl(ResultStream),
+      writeCEs(ResultStream,OtherCCs).

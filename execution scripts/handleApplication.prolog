@@ -9,12 +9,14 @@
 % PreprocessingFlag: 'preprocessing' or 'nopreprocessing', 
 % ClockTick: temporal distance between two consecutive time-points, SDEBatch: the input narrative size asserted in a single batch
 
-handleApplication(Prolog, toy, LogFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :- 
+handleApplication(Prolog, toy, LogFile, ResultFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :- 
 	(Prolog=yap, 
-	 LogFile = '../examples/toy/experiments/execution log files/log-YAP-toy.txt'
+	 LogFile = '../examples/toy/experiments/execution log files/log-YAP-toy.txt',
+	 ResultFile = '../examples/toy/experiments/execution log files/log-YAP-toy-recognised-intervals.txt'
 	 ;
 	 Prolog=swi,
-	 LogFile = '../examples/toy/experiments/execution log files/log-SWI-toy.txt'
+	 LogFile = '../examples/toy/experiments/execution log files/log-SWI-toy.txt',
+	 ResultFile = '../examples/toy/experiments/execution log files/log-SWI-toy-recognised-intervals.txt'
 	),
 	WM = 30,
 	Step = 30, 
@@ -28,12 +30,14 @@ handleApplication(Prolog, toy, LogFile, WM, Step, LastTime, StreamOrderFlag, Pre
 	consult('../examples/toy/experiments/data/toy_data.prolog'),
 	consult('../examples/toy/experiments/data/toy_var_domain.prolog'), !.
 
-handleApplication(Prolog, caviar, LogFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :-
+handleApplication(Prolog, caviar, LogFile, ResultFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :-
 	(Prolog=yap,
-	 LogFile = '../examples/caviar/experiments/execution log files/log-YAP-caviar-100K-100K.txt'
+	 LogFile = '../examples/caviar/experiments/execution log files/log-YAP-caviar-100K-100K.txt',
+	 ResultFile = '../examples/caviar/experiments/execution log files/log-YAP-caviar-100K-100K-recognised-intervals.txt'
 	 ;
 	 Prolog=swi,
-	 LogFile = '../examples/caviar/experiments/execution log files/log-SWI-caviar-100K-100K.txt'
+	 LogFile = '../examples/caviar/experiments/execution log files/log-SWI-caviar-100K-100K.txt',
+	 ResultFile = '../examples/caviar/experiments/execution log files/log-SWI-caviar-100K-100K-recognised-intervals.txt'
 	),
 	WM = 100000,
 	Step = 100000, 
@@ -51,12 +55,14 @@ handleApplication(Prolog, caviar, LogFile, WM, Step, LastTime, StreamOrderFlag, 
 	consult('../examples/caviar/experiments/data/movementB.prolog'), 
 	consult('../examples/caviar/experiments/data/list-of-ids.prolog'), !.
 
-handleApplication(Prolog, ctm, LogFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :-
+handleApplication(Prolog, ctm, LogFile, ResultFile, WM, Step, LastTime, StreamOrderFlag, PreprocessingFlag, ClockTick, SDEBatch) :-
 	(Prolog=yap,
-	 LogFile = '../examples/ctm/experiments/execution log files/log-YAP-ctm-10K-10K.txt'
+	 LogFile = '../examples/ctm/experiments/execution log files/log-YAP-ctm-10K-10K.txt',
+	 ResultFile = '../examples/ctm/experiments/execution log files/log-YAP-ctm-10K-10K-recognised-intervals.txt'
 	 ;
 	 Prolog=swi,
-	 LogFile = '../examples/ctm/experiments/execution log files/log-SWI-ctm-10K-10K.txt'
+	 LogFile = '../examples/ctm/experiments/execution log files/log-SWI-ctm-10K-10K.txt',
+	 ResultFile = '../examples/ctm/experiments/execution log files/log-SWI-ctm-10K-10K-recognised-intervals.txt'
 	),
 	WM = 10000,
 	Step = 10000, 
