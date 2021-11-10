@@ -9,8 +9,8 @@
 :-['../../../src/RTEC.prolog'].
 
 
-:- multifile updateSDE/1, updateSDE/2, updateSDE/3, testcase/9, testcaseE/9, testcaseSE/9, check/3.
-:- discontiguous updateSDE/1, updateSDE/2, updateSDE/3, testcase/9, testcaseE/9, testcaseSE/9, check/3.
+:- multifile((updateSDE/1, updateSDE/2, updateSDE/3, testcase/9, testcaseE/9, testcaseSE/9, check/3)).
+:- discontiguous((updateSDE/1, updateSDE/2, updateSDE/3, testcase/9, testcaseE/9, testcaseSE/9, check/3)).
 
 %runtests:-findall((Scen,C,N,E,R),(test(Scen,C,N,E,R)),TestResults),prettyPrint(TestResults).
 

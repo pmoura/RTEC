@@ -37,7 +37,7 @@
 
 % the declaration below is necessary for SWI Prolog:
 % This is probably due to dynamic grounding
-:- dynamic vessel/1, vpair/2.
+:- dynamic((vessel/1, vpair/2)).
 
 %%%%%%%%%%%%%%%%%% INPUT %%%%%%%%%%%%%%%%%%
 event(change_in_speed_start(_)).	inputEntity(change_in_speed_start(_)).		index(change_in_speed_start(Vessel), Vessel).

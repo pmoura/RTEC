@@ -1,6 +1,10 @@
 
 % ordered lists and set operations
-:-use_module(library(ordsets)).
+:- uses(set, [
+	as_set/2 as list_to_ord_set/2,
+	union/4 as ord_union/4,
+	intersection/4 as ord_intersection/4
+]).
 
 % dynamicGrounding(+Ts,+Te)
 % perform dynamic grounding in (Ts,Te]
@@ -118,7 +122,7 @@ removeOutdated:-
 % assert_grounding(+Term)
 assert_grounding([]).
 assert_grounding([Term|Other]):-
-    assert(Term),
+    assertz(Term),
     assert_grounding(Other).
 
 

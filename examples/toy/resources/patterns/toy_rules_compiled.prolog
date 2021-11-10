@@ -8,9 +8,9 @@ terminatedAt(rich(_131261)=true, _, _131249, _) :-
      happensAtIE(lose_wallet(_131261),_131249).
 
 holdsForSDFluent(happy(_131264)=true,_131249) :-
-     holdsForProcessedSimpleFluent(_131264,rich(_131264)=true,_131270),
-     holdsForProcessedSimpleFluent(_131264,location(_131264)=pub,_131281),
-     union_all([_131270,_131281],_131249).
+     rtec::holdsForProcessedSimpleFluent(_131264,rich(_131264)=true,_131270),
+     rtec::holdsForProcessedSimpleFluent(_131264,location(_131264)=pub,_131281),
+     intervals::union_all([_131270,_131281],_131249).
 
 cachingOrder2(_131248, location(_131248)=home) :-
      person(_131248),place(home).

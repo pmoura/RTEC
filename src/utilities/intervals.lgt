@@ -3,6 +3,20 @@
 Alexander Artikis
 */
 
+:- object(intervals).
+
+	:- public([
+		union_all/2, intersect_all/2, relative_complement_all/3, complement_all/2,
+		prevTimePoint/2, nextTimePoint/2, gt/2
+	]).
+
+	:- uses(list, [
+		member/2
+	]).
+
+	:- uses(user, [
+		temporalDistance/1, initTime/1
+	]).
 
 /******************* Main predicate for union *******************/
 
@@ -293,7 +307,7 @@ intervals_are_not_coalescable( I1, I2 ) :-
 
 
 intervals_are_coalescable( I1, I2 ) :-
-    not( intervals_are_not_coalescable( I1, I2 ) ).
+    \+ intervals_are_not_coalescable( I1, I2 ).
 
 
 interval_union( [L1,U1], [L2,U2], [L3,U3] ) :-
@@ -388,3 +402,5 @@ revertToSE( IL, OL, Aux ) :-
   append( Aux, [(S, inf)], NewAux ),
   revertToSE( Tail, OL, NewAux ).
 */
+
+:- end_object.

@@ -6,11 +6,11 @@
  ********************************************************/
 
 % Some extra declarations have been added in the rules and declarations to allow for unit testing
-:- dynamic maxDuration/3, maxDurationUE/3.
-:- dynamic initiatedAt/4, terminatedAt/4, holdsForSDFluent/2.
+:- dynamic((maxDuration/3, maxDurationUE/3)).
+:- dynamic((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2)).
 
-:- discontiguous initially/1, initiatedAt/4, initiates/3, holdsFor/2, happensAt/2, holdsForSDFluent/2.
-:- multifile happensAt/2.
+:- discontiguous((initially/1, initiatedAt/4, initiates/3, holdsFor/2, happensAt/2, holdsForSDFluent/2)).
+:- multifile(happensAt/2).
 
 /*********************************** CTM CE DEFINITIONS *************************************/
 

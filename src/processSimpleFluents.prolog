@@ -114,7 +114,7 @@ broken(U, Ts, Tf, T) :-
 	terminatedAt(U, Ts, Tf, T).
 
 broken(F=V1, Ts, Tstar, T) :-
-	simpleFluent(F=V2), \+V2=V1,
+	simpleFluent(F=V2), V2 \= V1,
 	initiatedAt(F=V2, Ts, Tstar, T). 
 	%(strong_initiates ; V1 \= V2).   
   
@@ -133,17 +133,17 @@ storeStartingPoints(_, _, []) :- !.
 storeStartingPoints(Index, F=V, SPoints) :-
 	maxDuration(F=V, _, _),
 	retract(startingPoints(Index, F=V, _)), !,
-	assert(startingPoints(Index, F=V, SPoints)).
+	assertz(startingPoints(Index, F=V, SPoints)).
 storeStartingPoints(Index, F=V, SPoints) :-
 	maxDuration(F=V, _, _), !,
-	assert(startingPoints(Index, F=V, SPoints)).
+	assertz(startingPoints(Index, F=V, SPoints)).
 storeStartingPoints(Index, F=V, SPoints) :-
 	cyclic(F=V),
 	retract(startingPoints(Index, F=V, _)), !,
-	assert(startingPoints(Index, F=V, SPoints)).
+	assertz(startingPoints(Index, F=V, SPoints)).
 storeStartingPoints(Index, F=V, SPoints) :-
 	cyclic(F=V), !,
-	assert(startingPoints(Index, F=V, SPoints)).
+	assertz(startingPoints(Index, F=V, SPoints)).
 storeStartingPoints(_, _, _).
 
 
@@ -211,7 +211,7 @@ computesimpleFPList([(Start,End)|Tail], InitTime, [(Start,End)|Tail], []) :-
 
 computesimpleFPList([(Start,End)|Tail], InitTime, [(NewInitTime,End)|Tail], [(Start,NewInitTime)]) :-
 	nextTimePoint(InitTime, NewInitTime), 
-	\+ NewInitTime = End, !.
+	NewInitTime \= End, !.
 
 computesimpleFPList([Head|Tail], _InitTime, Tail, [Head]).
 
@@ -221,7 +221,7 @@ computesimpleFPList([Head|Tail], _InitTime, Tail, [Head]).
 updatesimpleFPList(_Index, _U, [], []) :- !.
 
 updatesimpleFPList(Index, F=V, NewPeriods, BrokenPeriod) :- 
-	assert(simpleFPList(Index, F=V, NewPeriods, BrokenPeriod)).
+	assertz(simpleFPList(Index, F=V, NewPeriods, BrokenPeriod)).
 
 
 

@@ -10,18 +10,44 @@
  produced by this compiler, along with the declarations.
  ***************************************************************************************************/
 
-:- use_module(library(lists)). % needed to use member/2 in YAP.
+:- object(compiler(_Kind_),
+	implements(expanding)).
 
-% these predicates are defined in this file
-:- discontiguous compileHoldsAtTree/3, findChildren/3. 
+	% compiler predicates cache
+	:- private([
+		index_/2, buildFromPoints_/1, collectIntervals_/1, cachingOrder_/1, grounding_/1
+	]).
+	:- dynamic([
+		index_/2, buildFromPoints_/1, collectIntervals_/1, cachingOrder_/1, grounding_/1
+	]).
 
-:- dynamic initially/1, initiatedAt/2, initiatedAt/4, terminatedAt/2, terminatedAt/4, initiates/3, terminates/3, 
-	   happensAt/2, holdsFor/2, holdsAt/2, grounding/1, cyclic/1, collectIntervals/1, buildFromPoints/1.
+	:- uses(list, [
+		append/3
+	]).
 
-:- multifile indexOf/2.
+	:- uses(user, [
+		cachingOrder/1, index/2, simpleFluent/1, sDFluent/1,
+		inputEntity/1, outputEntity/1, internalEntity/1, cyclic/1
+	]).
 
-indexOf(Index, Entity):-
-	index(Entity, Index).
+	% these predicates are defined in this file
+	:- discontiguous([
+		compileHoldsAtTree/3, findChildren/3
+	]).
+
+	indexOf(Index, Entity) :-
+		index_(Entity, Index).
+
+/*
+:- public(compileEventDescription/2).
+
+compileEventDescription(Declarations, Rules) :- 
+	logtalk_load(Declarations, [hook(hook_pipeline([directives_hook,compiler(declarations)]))]),
+%	open(OutputDescription, write, Stream),
+%	logtalk_compile(InputDescription, [hook(hook_pipeline([directives_hook,compiler,write_to_stream_hook(Stream,[quoted(true)])]))]),
+	logtalk_load(Rules, [hook(hook_pipeline([directives_hook,compiler(rules)]))]).
+%	close(Stream),
+%	logtalk_load(OutputDescription, [hook(directives_hook)]).
 
 compileEventDescription(Declarations, InputDescription, OutputDescription) :- 
 	consult(Declarations),
@@ -56,12 +82,19 @@ compileEventDescription(_, _, _) :- compileBuildFromPoints.
 compileEventDescription(_, InputDescription, _) :- compileAnythingElse(InputDescription).
 % close the new event description file
 compileEventDescription(_, _, _) :-  told, !.
+*/
 
+term_expansion(begin_of_file, begin_of_file) :-
+	_Kind_ == declarations,
+	retractall(index_(_, _)),
+	retractall(buildFromPoints_(_)),
+	retractall(collectIntervals_(_)),
+	retractall(cachingOrder_(_)),
+	retractall(grounding_(_)).
 
 % compile initially/1 rules
-compileInitially :-
-	clause(initially(F=V), Body),	
-	\+ var(F),
+term_expansion((initially(F=V) :- Body), Clause) :-
+	nonvar(F),
 	T = -1,
 	(
 		Body = (true),
@@ -72,143 +105,166 @@ compileInitially :-
 	),
 	compileConditions(BodyWithTimeSpan, NewBody, [T1, T2], false),
 	%writeCompiledRule('initially', [F=V], NewBody), fail.
-	writeCompiledRule('initiatedAt', [F=V,T1,T,T2], NewBody), fail.
-	
+	Clause = (initiatedAt(F=V,T1,T,T2) :- NewBody).
+
 % compile initiatedAt/2 rules 
-compileInitiatedAt :-
-	clause(initiatedAt(F=V,T), Body),
-	\+ var(F),	
+term_expansion((initiatedAt(F=V,T) :- Body), Clause) :-
+	nonvar(F),
 	(
-	    	cyclic(F=V),
-	    	compileConditions(Body, NewBody, [T1, T2], true)
-	    	;
-	    	\+ cyclic(F=V),
-	    	compileConditions(Body, NewBody, [T1, T2], false)
-	),    
-	writeCompiledRule('initiatedAt', [F=V,T1,T,T2], NewBody), fail.
-	
+			cyclic(F=V),
+			compileConditions(Body, NewBody, [T1, T2], true)
+			;
+			\+ cyclic(F=V),
+			compileConditions(Body, NewBody, [T1, T2], false)
+	),
+	Clause = (initiatedAt(F=V,T1,T,T2) :- NewBody).
+
 % compile initiatedAt/4 rules 
 % In this case, we assume the author treats timespans correctly inside the rule body 
-compileInitiatedAt :-
-	clause(initiatedAt(F=V,T1,T,T2), Body),
-	\+ var(F),    	
+term_expansion((initiatedAt(F=V,T1,T,T2) :- Body), Clause) :-
+	nonvar(F),
 	(
 		cyclic(F=V),
-	    	compileConditions(Body, NewBody, [], true)
-	    	;
-	    	\+ cyclic(F=V),
-	    	compileConditions(Body, NewBody, [], false)
-	    ),	
-	writeCompiledRule('initiatedAt', [F=V,T1,T,T2], NewBody), fail.
-	
+			compileConditions(Body, NewBody, [], true)
+			;
+			\+ cyclic(F=V),
+			compileConditions(Body, NewBody, [], false)
+	),
+	Clause = (initiatedAt(F=V,T1,T,T2) :- NewBody).
+
 % compile terminatedAt/2 rules 
-compileTerminatedAt :-
-	clause(terminatedAt(F=V,T), Body),
-	\+ var(F),
+term_expansion((terminatedAt(F=V,T) :- Body), Clause) :-
+	nonvar(F),
 	(
 		cyclic(F=V),
 		compileConditions(Body, NewBody, [T1, T2], true)
 		;
 		\+ cyclic(F=V),
 		compileConditions(Body, NewBody, [T1, T2], false)
-	),	
-	writeCompiledRule('terminatedAt', [F=V,T1,T,T2], NewBody), fail.
-	
+	),
+	Clause = (terminatedAt(F=V,T1,T,T2) :- NewBody).
+
 % compile terminatedAt/4 rules 
 % In this case, we assume the author treats timespans correctly inside the rule body
-compileTerminatedAt :-
-	clause(terminatedAt(F=V,T1,T,T2), Body),
-	\+ var(F),
+term_expansion((terminatedAt(F=V,T1,T,T2), Body), Clause) :-
+	nonvar(F),
 	(
-	   	cyclic(F=V),
-	    	compileConditions(Body, NewBody, [], true)
-	    	;
-	    	\+ cyclic(F=V),
-	    	compileConditions(Body, NewBody, [], false)
-	),	
-	writeCompiledRule('terminatedAt', [F=V,T1,T,T2], NewBody), fail.
+		cyclic(F=V),
+		compileConditions(Body, NewBody, [], true)
+	;
+		\+ cyclic(F=V),
+		compileConditions(Body, NewBody, [], false)
+	),
+	Clause = (terminatedAt(F=V,T1,T,T2) :- NewBody).
 
 % compile initiates/3 rules
-compileInitiates :-
-	clause(initiates(E,F=V,T), (Body)),
-	\+ var(F),	
+term_expansion((initiates(E,F=V,T) :- Body), Clause) :-
+	nonvar(F),
 	(
-	    	cyclic(F=V),
-	    	compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], true)
-	    	;
-	    	\+ cyclic(F=V),
-	    	compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], false)
-	),    
-	writeCompiledRule('initiatedAt', [F=V,T1,T,T2], NewBody), fail.
+		cyclic(F=V),
+		compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], true)
+	;
+		\+ cyclic(F=V),
+		compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], false)
+	),	
+	Clause = (initiatedAt(F=V,T1,T,T2) :- NewBody).
 
 % compile terminates/3 rules
-compileTerminates :-
-	clause(terminates(E,F=V,T), (Body)),
-	\+ var(F),	
+term_expansion((terminates(E,F=V,T) :- Body), Clause) :-
+	nonvar(F),	
 	(
-	    	cyclic(F=V),
-	    	compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], true)
-	    	;
-	    	\+ cyclic(F=V),
-	    	compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], false)
-	),    
-	writeCompiledRule('terminatedAt', [F=V,T1,T,T2], NewBody), fail.
-
+		cyclic(F=V),
+		compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], true)
+		;
+		\+ cyclic(F=V),
+		compileConditions((happensAt(E,T),Body), NewBody, [T1, T2], false)
+	),
+	Clause = (terminatedAt(F=V,T1,T,T2) :- NewBody).
 
 % compile holdsFor/2 rules
-compileHoldsFor :-
-	clause(holdsFor(F=V,I), Body),	
+term_expansion((holdsFor(F=V,I) :- Body), Clause) :-
 	% the condition below makes sure that we do not compile rules from RTEC.prolog 
 	% or any other domain-independent code
-	\+ var(F),
-	compileConditions(Body, NewBody, [], false),	
-	writeCompiledRule('holdsFor', [F=V,I], NewBody), fail.
-	
+	nonvar(F),
+	compileConditions(Body, NewBody, [], false),
+	Clause = (holdsForSDFluent(F=V,I) :- NewBody).
+
 % compile holdsAt/2 rules
 
-compileHoldsAt :-
-	clause(holdsAt(F=V,_T), Body),	
+term_expansion((holdsAt(F=V,_T) :- Body), Clause) :-
 	% the condition below makes sure that we do not compile rules from RTEC.prolog 
 	% or any other domain-independent code
-	\+ var(F),
-	compileHoldsAtTree(Body, NewBody, I),	
-	writeCompiledRule('holdsFor', [F=V,I], NewBody), fail.
-
+	nonvar(F),
+	compileHoldsAtTree(Body, NewBody, I),
+	Clause = (holdsFor(F=V,I) :- NewBody).
 
 % compile happensAt/2 rules 
-compileHappensAt :-
-	clause(happensAt(E,T), Body),	
+term_expansion((happensAt(E,T) :- Body), Clause) :-
 	% the condition below makes sure that we do not compile rules from RTEC.prolog 
 	% or any other domain-independent code
-	\+ var(E),
-	compileConditions(Body, NewBody, [], false),	
-	writeCompiledRule('happensAt', [E,T], NewBody), fail.
+	nonvar(E),
+	compileConditions(Body, NewBody, [], false),
+	Clause = (happensAtEv(E,T) :- NewBody).
 
+% cache grounding/1 clauses
+term_expansion((grounding(Entity) :- Body), (grounding(Entity) :- Body)) :-
+	assertz((grounding_(Entity) :- Body)).
+term_expansion(grounding(Entity), grounding(Entity)) :-
+	assertz(grounding_(Entity)).
+
+% cache cachingOrder/1 clauses
+term_expansion((cachingOrder(Entity) :- Body), (cachingOrder(Entity) :- Body)) :-
+	assertz((cachingOrder_(Entity) :- Body)).
+term_expansion(cachingOrder(Entity), cachingOrder(Entity)) :-
+	assertz(cachingOrder_(Entity)).
+
+% cache collectIntervals/1 clauses
+term_expansion((collectIntervals(Interval) :- Body), (collectIntervals(Interval) :- Body)) :-
+	assertz((collectIntervals_(Interval) :- Body)).
+term_expansion(collectIntervals(Interval), collectIntervalsInterval) :-
+	assertz(collectIntervals_(Interval)).
+
+% cache buildFromPoints/1 clauses
+term_expansion((buildFromPoints(Interval) :- Body), (buildFromPoints(Interval) :- Body)) :-
+	assertz((buildFromPoints_(Interval) :- Body)).
+term_expansion(buildFromPoints(Interval), buildFromPoints) :-
+	assertz(buildFromPoints_(Interval)).
+
+% cache index/2 clauses
+term_expansion((index(Index, Entity) :- Body), (index(Index, Entity) :- Body)) :-
+	assertz((index_(Index, Entity) :- Body)).
+term_expansion(index(Index, Entity), index(Index, Entity)) :-
+	assertz(index_(Index, Entity)).
+
+term_expansion(end_of_file, Clauses) :-
+	_Kind_ == rules,
+	findall(Clause, compileCachingOrder(Clause), Clauses0),
+	findall(Clause, compileCollectIntervals(Clause), Clauses1, Clauses0),
+	findall(Clause, compileBuildFromPoints(Clause), Clauses2, Clauses1),
+	append(Clauses2, [end_of_file], Clauses).
 
 % compile cachingOrder/1 rules
-compileCachingOrder :-
+compileCachingOrder(Clause) :-
 	cachingOrder(Entity),
-	clause(grounding(Entity), Body),
-	indexOf(Index, Entity),	 
-	write('cachingOrder2('), write(Index), write(', '), write(Entity), write(') :-'), nl, 
-	tab(5), write(Body), write('.'), nl, nl, fail.
+	clause(grounding_(Entity), Body),
+	indexOf(Index, Entity),
+	Clause = (cachingOrder2(Index, Entity) :- Body).
 
 % compile collectIntervals/1 rules
-compileCollectIntervals :-
-	collectIntervals(F=V),
-	clause(grounding(F=V), Body),
+compileCollectIntervals(Clause) :-
+	collectIntervals_(F=V),
+	clause(grounding_(F=V), Body),
 	indexOf(Index, F=V),	 
-	write('collectIntervals2('), write(Index), write(', '), write(F=V), write(') :-'), nl, 
-	tab(5), write(Body), write('.'), nl, nl, fail.
+	Clause = (collectIntervals2(Index, F=V) :- Body).
 
 % compile buildFromPoints/1 rules
-compileBuildFromPoints :-
-	buildFromPoints(F=V),
-	clause(grounding(F=V), Body),
+compileBuildFromPoints(Clause) :-
+	buildFromPoints_(F=V),
+	clause(grounding_(F=V), Body),
 	indexOf(Index, F=V),	 
-	write('buildFromPoints2('), write(Index), write(', '), write(F=V), write(') :-'), nl, 
-	tab(5), write(Body), write('.'), nl, nl, fail.
-	
+	Clause = (buildFromPoints2(Index, F=V) :- Body).
+
+/*
 %compile for anything other than the EC predicates
 compileAnythingElse(InputDescription) :-
 	% predicate_property, for some reason, requires absolute path.
@@ -239,7 +295,7 @@ compileAnythingElse(InputDescription) :-
 		tab(5), write(Body) 
 	),
 	write('.'), nl, nl, fail.
-
+*/
 %%%%%%%% compile body predicates %%%%%%%%
 
 %%%% recursive definition of compileConditions/4 %%%%
@@ -259,101 +315,101 @@ compileConditions(\+Body, \+NewBody, Timespan, Cyclic) :-
 
 compileConditions(Body, NewBody, Timespan, Cyclic) :-	
 	compileConditions1(Body, NewBody, Timespan, Cyclic).
-	
+
 
 %%%% recursive definition of compileHoldsAtTree/3 %%%%
 compileHoldsAtTree(Body, NewBody, Interval) :-
 	findChildren(Body, Children, Operation),
 	!,
 	/*findall([ChildNewBody,ChildInterval], 
-	        (member(Child,Children),compileHoldsAtTree(Child,ChildNewBody,ChildInterval)),
-	        ChildrenBIs),*/
+			(member(Child,Children),compileHoldsAtTree(Child,ChildNewBody,ChildInterval)),
+			ChildrenBIs),*/
 	% findall creates new variable bindings. Use gather instead.
 	gatherChildrenBodyIntervals(Children,[],ChildrenBIs),
 	completeBody(ChildrenBIs,Operation,NewBody,Interval).
-	
+
 gatherChildrenBodyIntervals([HeadChild|[]],InitChildrenBIs,ChildrenBIs) :-
 	compileHoldsAtTree(HeadChild,ChildNewBody,ChildInterval),
 	append(InitChildrenBIs,[[ChildNewBody,ChildInterval]],ChildrenBIs).
-	
+
 gatherChildrenBodyIntervals([HeadChild|TailChildren],InitChildrenBIs,ChildrenBIs) :-
 	compileHoldsAtTree(HeadChild,ChildNewBody,ChildInterval),
 	append(InitChildrenBIs,[[ChildNewBody,ChildInterval]],NewInitChildrenBIs),
 	gatherChildrenBodyIntervals(TailChildren,NewInitChildrenBIs,ChildrenBIs).
-	
+
 % simple fluent
-compileHoldsAtTree(holdsAt(U,_T), holdsForProcessedSimpleFluent(Index,U,I), I) :-
+compileHoldsAtTree(holdsAt(U,_T), rtec::holdsForProcessedSimpleFluent(Index,U,I), I) :-
 	simpleFluent(U), indexOf(Index, U), !.
-	
+
 % output entity/statically determined fluent
-compileHoldsAtTree(holdsAt(U,_T), holdsForProcessedSDFluent(Index,U,I), I) :-
+compileHoldsAtTree(holdsAt(U,_T), rtec::holdsForProcessedSDFluent(Index,U,I), I) :-
 	sDFluent(U), indexOf(Index, U), !.
-	
+
 findChildren(Body,Children,Operation) :-
 	checkForNegation(Body,Intersections,Unions),
 	convertToInters(Intersections,ChildrenI),
 	convertToUnions(Unions,ChildrenU),
 	Children = [ChildrenI,ChildrenU],
 	Operation = negation.
-	
+
 checkForNegation(Body,Intersections,Unions) :-
 	checkForNegation1(Body,[],Intersections,[],Unions),
 	Unions \= [].
-	
+
 checkForNegation1((\+Head,Rest),InitIntersections,Intersections,InitUnions,Unions) :-
 	append(InitUnions,[Head],NewInitUnions),
 	checkForNegation1(Rest,InitIntersections,Intersections,NewInitUnions,Unions).
-	
+
 checkForNegation1((Head,Rest),InitIntersections,Intersections,InitUnions,Unions) :-
 	append(InitIntersections,[Head],NewInitIntersections),
 	checkForNegation1(Rest,NewInitIntersections,Intersections,InitUnions,Unions).
 
 checkForNegation1(\+Body,InitIntersections,InitIntersections,InitUnions,Unions) :-
 	append(InitUnions,[Body],Unions).
-	
+
 checkForNegation1(Body,InitIntersections,Intersections,InitUnions,InitUnions) :-
 	append(InitIntersections,[Body],Intersections).
-	
+
 convertToInters([H|[]], H).
 
 convertToInters([H|T],(H,Rest)) :-
 	convertToInters(T,Rest).
-	
+
 convertToUnions([H|[]], H).
 
 convertToUnions([H|T],(H;Rest)) :-
 	convertToUnions(T,Rest).
-		
+
 findChildren((Head,Rest),Children,Operation) :-
 	findChildren1((Head,Rest), [], Children, Operation).
-	
+
 findChildren((Head;Rest),Children,Operation) :-
 	findChildren1((Head;Rest), [], Children, Operation).
-	
+
 findChildren1((Head,Rest), InitChildren, Children, intersection) :-
 	!, append(InitChildren,[Head],NewInitChildren),
 	findChildren1(Rest, NewInitChildren, Children, intersection).
-	
+
 findChildren1((Head;Rest), InitChildren, Children, union) :-
 	!, append(InitChildren,[Head],NewInitChildren),
 	findChildren1(Rest, NewInitChildren, Children, union).
 
 findChildren1(Body, InitChildren, Children, _Operation) :-
 	append(InitChildren, [Body], Children).
-	
+
 completeBody(ChildrenBIs,intersection,(Head,Rest),Interval) :-
 	completeBody1(ChildrenBIs,Head,[],Intervals),
-	Rest = intersect_all(Intervals, Interval).
-	
+	Rest = intervals::intersect_all(Intervals, Interval).
+
 completeBody(ChildrenBIs,union,(Head,Rest),Interval) :-
 	completeBody1(ChildrenBIs,Head,[],Intervals),
-	Rest = union_all(Intervals, Interval).
-	
+	Rest = intervals::union_all(Intervals, Interval).
+
 completeBody(ChildrenBIs,negation,(Head,Rest),Interval) :-
 	completeBody1(ChildrenBIs,Head,[],Intervals),
 	Intervals = [H|T],
-	Rest = relative_complement_all(H, T, Interval).
-	
+	Rest = intervals::relative_complement_all(H, T, Interval).
+
 completeBody1([H|[]],(Head),InitIntervals,Intervals) :-
 	H = [Head|Interval],
 	append(InitIntervals,Interval,Intervals).
@@ -374,7 +430,7 @@ completeBody1([H|T],(Head,Rest),InitIntervals,Intervals) :-
 compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
 	% we use copy_term in compileConditions1 to classify U without 
 	% affecting its (free) variables
-        copy_term(F=V, U1), simpleFluent(U1),
+	copy_term(F=V, U1), simpleFluent(U1),
 	% but use U in the compiled event description 
 	% a free variable is used below to avoid instantiating V, 
 	% in case it is a variable, to some arbitrary ground value
@@ -389,7 +445,7 @@ compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of input entity/statically determined fluent
 compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -401,7 +457,7 @@ compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of internal entity/statically determined fluent
 compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -413,7 +469,7 @@ compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of output entity/statically determined fluent
 compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -425,7 +481,7 @@ compileConditions1(happensAt(start(F=V),T), NewBody, Timespan, _Cyclic) :-
 
 % ---------------------------------compile startI-------------------------------------
 compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), simpleFluent(U1), 
+	copy_term(F=V, U1), simpleFluent(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -437,7 +493,7 @@ compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of input entity/statically determined fluent
 compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -449,7 +505,7 @@ compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of internal entity/statically determined fluent
 compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -461,7 +517,7 @@ compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: start of output entity/statically determined fluent
 compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -474,7 +530,7 @@ compileConditions1(happensAt(startI(F=V),T), NewBody, Timespan, _Cyclic) :-
 
 % special event: end of simple fluent
 compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), simpleFluent(U1), 
+	copy_term(F=V, U1), simpleFluent(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -486,7 +542,7 @@ compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: end of input entity/statically determined fluent
 compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -498,7 +554,7 @@ compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: end of internal entity/statically determined fluent
 compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -510,7 +566,7 @@ compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: end of output entity/statically determined fluent
 compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
+	copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
 	indexOf(Index, F=_),
 	(
 		Timespan = [],
@@ -522,7 +578,7 @@ compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
 	
 % special event: end of statically determined fluent that is neither an input nor an output entity
 compileConditions1(happensAt(end(F=V),T), NewBody, Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1),
+	copy_term(F=V, U1), sDFluent(U1),
 	(
 		Timespan = [],
 		NewBody = happensAtSDFluent(end(F=V),T)
@@ -608,7 +664,7 @@ compileConditions1(happensAt(E,T), NewBody, Timespan, _Cyclic) :-
 	
 % output entity/event
 compileConditions1(happensAt(E,T), NewBody, Timespan, _Cyclic) :-
-        copy_term(E, E1), outputEntity(E1), 
+	copy_term(E, E1), outputEntity(E1), 
 	indexOf(Index, E),
 	(
 		Timespan = [],
@@ -646,10 +702,10 @@ compileConditions1(terminatedAt(U,T), NewBody, Timespan, _Cyclic) :-
 
 % simple fluent
 compileConditions1(holdsAt(F=V,T), NewBody, _Timespan, Cyclic) :-
-        copy_term(F=V, U1), simpleFluent(U1), 
+	copy_term(F=V, U1), simpleFluent(U1), 
 	indexOf(Index, F=_),
 	(
-		Cyclic,
+		Cyclic == true,
 		cyclic(U1),
 		NewBody = holdsAtCyclic(Index,F=V,T)
 		;
@@ -657,10 +713,10 @@ compileConditions1(holdsAt(F=V,T), NewBody, _Timespan, Cyclic) :-
 	), !.
 	
 compileConditions1(holdsAt(I,F=V,T), NewBody, _Timespan, Cyclic) :-
-        copy_term(F=V, U1), simpleFluent(U1), 
+	copy_term(F=V, U1), simpleFluent(U1), 
 	indexOf(I, F=_),
 	(
-		Cyclic,
+		Cyclic == true,
 		cyclic(U1),
 		NewBody = holdsAtCyclic(I,F=V,T)
 		;
@@ -668,49 +724,49 @@ compileConditions1(holdsAt(I,F=V,T), NewBody, _Timespan, Cyclic) :-
 	), !.
 	
 % input entity/statically determined fluent
-compileConditions1(holdsAt(F=V,T), holdsAtProcessedIE(Index,F=V,T), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
+compileConditions1(holdsAt(F=V,T), rtec::holdsAtProcessedIE(Index,F=V,T), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % internal entity/statically determined fluent
-compileConditions1(holdsAt(F=V,T), holdsAtProcessedIE(Index,F=V,T), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
+compileConditions1(holdsAt(F=V,T), rtec::holdsAtProcessedIE(Index,F=V,T), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % output entity/statically determined fluent
-compileConditions1(holdsAt(F=V,T), holdsAtProcessedSDFluent(Index,F=V,T), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
+compileConditions1(holdsAt(F=V,T), rtec::holdsAtProcessedSDFluent(Index,F=V,T), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % statically determined fluent that is neither input nor output entity
-compileConditions1(holdsAt(F=V,T), holdsAtSDFluent(F=V,T), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), !.
+compileConditions1(holdsAt(F=V,T), rtec::holdsAtSDFluent(F=V,T), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), !.
 
 %%% holdsFor
 
 % simple fluent
-compileConditions1(holdsFor(F=V,I), holdsForProcessedSimpleFluent(Index,F=V,I), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), simpleFluent(U1), 
+compileConditions1(holdsFor(F=V,I), rtec::holdsForProcessedSimpleFluent(Index,F=V,I), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), simpleFluent(U1), 
 	indexOf(Index, F=_), !.
 
 % input entity/statically determined fluent
-compileConditions1(holdsFor(F=V,I), holdsForProcessedIE(Index,F=V,I), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
+compileConditions1(holdsFor(F=V,I), rtec::holdsForProcessedIE(Index,F=V,I), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), inputEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % internal entity/statically determined fluent
-compileConditions1(holdsFor(F=V,I), holdsForProcessedIE(Index,F=V,I), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
+compileConditions1(holdsFor(F=V,I), rtec::holdsForProcessedIE(Index,F=V,I), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), internalEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % output entity/statically determined fluent
-compileConditions1(holdsFor(F=V,I), holdsForProcessedSDFluent(Index,F=V,I), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
+compileConditions1(holdsFor(F=V,I), rtec::holdsForProcessedSDFluent(Index,F=V,I), _Timespan, _Cyclic) :-
+	copy_term(F=V, U1), sDFluent(U1), outputEntity(U1), 
 	indexOf(Index, F=_), !.
 
 % statically determined fluent that is neither input nor output entity
 compileConditions1(holdsFor(F=V,I), holdsForSDFluent(F=V,I), _Timespan, _Cyclic) :-
-        copy_term(F=V, U1), sDFluent(U1), !.
+	copy_term(F=V, U1), sDFluent(U1), !.
 
 
 %%% other body literals, eg interval manipulation constructs 
@@ -727,83 +783,10 @@ compileConditions1(Something, Something, _Timespan, _Cyclic).
 
 compileConditions1(Something, _T1, _T2, Something).
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% I/O Utils
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+:- end_object.
 
 
-writeCompiledRule(initially, [U], (true)) :-
-	!, write('initially('), write(U), write(').'), nl, nl. 
-
-writeCompiledRule(initiatedAt, [U, T], (true)) :-
-	!, write('initiatedAt('), write(U), write(', _, '), write(T), write(', _).'), nl, nl.
-	
-writeCompiledRule(initiatedAt, [U, T1, T, T2], (true)) :-
-	!, write('initiatedAt('), write(U), write(', '), write(T1), write(', '), write(T), write(', '), write(T2), write(').'), nl, nl.
-
-writeCompiledRule(terminatedAt, [U, T], (true)) :-
-	!, write('terminatedAt('), write(U), write(', _, '), write(T), write(', _).'), nl, nl.
-	
-writeCompiledRule(terminatedAt, [U, T1, T, T2], (true)) :-
-	!, write('terminatedAt('), write(U), write(', '), write(T1), write(', '), write(T), write(', '), write(T2), write(').'), nl, nl.
-
-writeCompiledRule(holdsFor, [U, I], (true)) :-
-	!, write('holdsForSDFluent('), write(U), write(','), write(I), write(').'), nl, nl. 
-
-writeCompiledRule(happensAt, [E, T], (true)) :-
-	!, write('happensAt('), write(E), write(','), write(T), write(').'), nl, nl.
-
-
-writeCompiledRule(initially, [U], Body) :-
-	write('initially('), write(U), write(') :-'), nl,  
-	writeBodyLiterals(Body).
-
-writeCompiledRule(initiatedAt, [U, T], Body) :-
-	write('initiatedAt('), write(U), write(', _, '), write(T), write(', _) :-'), nl, 
-	writeBodyLiterals(Body).
-	
-writeCompiledRule(initiatedAt, [U, T1, T, T2], Body) :-
-	write('initiatedAt('), 
-	write(U), 
-	write(', '), write(T1), write(', '),  
-	write(T), 
-	write(', '), write(T2), 
-	write(') :-'), 
-	nl, 
-	writeBodyLiterals(Body).
-
-writeCompiledRule(terminatedAt, [U, T], Body) :-
-	write('terminatedAt('), write(U), write(', _, '), write(T), write(', _) :-'), nl, 
-	writeBodyLiterals(Body).
-	
-writeCompiledRule(terminatedAt, [U, T1, T, T2], Body) :-
-	write('terminatedAt('), 
-	write(U), 
-	write(', '), write(T1), write(', '),  
-	write(T), 
-	write(', '), write(T2), 
-	write(') :-'), 
-	nl, 
-	writeBodyLiterals(Body).
-
-writeCompiledRule(holdsFor, [U, I], Body) :-
-	write('holdsForSDFluent('), write(U), write(','), write(I), write(') :-'), nl,
-	writeBodyLiterals(Body).
-
-writeCompiledRule(happensAt, [E, T], Body) :-
-	write('happensAtEv('), write(E), write(','), write(T), write(') :-'), nl, 
-	writeBodyLiterals(Body).
-
-
-writeBodyLiterals((Head,true)):-
-	!, tab(5), write(Head), write('.'), nl, nl.
-
-writeBodyLiterals((Head,Rest)):-
-	!, tab(5), write(Head), write(','), nl,
-	writeBodyLiterals(Rest).
-
-writeBodyLiterals(Last) :- 
-	tab(5), write(Last), write('.'), nl, nl.
-
-
+%:- object(compiler,
+%	extends(compiler(_Kind_))).
+%
+%:- end_object.

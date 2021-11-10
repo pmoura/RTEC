@@ -1,6 +1,6 @@
-:-dynamic initiatedAt/4, holdsForSDFluent/2, initiatedAt/2, terminatedAt/2, terminatedAt/4, maxDuration/3, maxDurationUE/3.
+:- dynamic((initiatedAt/4, holdsForSDFluent/2, initiatedAt/2, terminatedAt/2, terminatedAt/4, maxDuration/3, maxDurationUE/3)).
 
-:- discontiguous initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDurationUE/3.
+:- discontiguous((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDurationUE/3)).
 
 %----------------within area -----------------%
 

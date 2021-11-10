@@ -92,7 +92,7 @@ cyclic(obl(send_goods(_,_,_))=false).
 
 % the declaration below is necessary for SWI Prolog and YAP 6.3:
 % This is probably due to dynamic grounding
-:- dynamic person/1, person_pair/2.
+:- dynamic((person/1, person_pair/2)).
 
 grounding(suspended(Ag,Role)=true)		:- person(Ag),role_of(Ag,Role).
 dgrounded(suspended(Ag,Role)=true, person(Ag)).

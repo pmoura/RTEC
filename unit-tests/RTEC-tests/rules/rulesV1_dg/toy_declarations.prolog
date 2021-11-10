@@ -3,7 +3,7 @@
 % - Is it an input or an output entity?
 % - Choose an argument to be used as index for quicker access.
 
-:- dynamic person/1, place/1.
+:- dynamic((person/1, place/1)).
 
 %%%%%%%%%%%%%%%%% INPUT EVENTS %%%%%%%%%%%%%%%%%
 event(go_to(_,_)).

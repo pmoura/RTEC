@@ -1,4 +1,4 @@
-:- dynamic maxDuration/3, maxDurationUE/3.
+:- dynamic((maxDuration/3, maxDurationUE/3)).
 
 %%%%%% rich
 initiatedAt(rich(X)=true, T) :-

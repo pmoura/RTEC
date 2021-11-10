@@ -25,7 +25,7 @@ datasetType/1 is used for logging the recognised intervals in continuousQueries.
 datasetType/1 is asserted in this file, and checked in continuousQueries.prolog
 datasetType(ground_truth) denotes that the recognitions on the corresponding dataset will be used as ground truth
 */
-:- dynamic datasetType/1.
+:- dynamic(datasetType/1).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% TOY EXAMPLE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -379,7 +379,7 @@ handleApplication(Prolog, brest-enriched, InputMode, LogFile, ResultsFile, WM, S
 	% load the dynamic data:
 	InputMode = csv(['../examples/maritime/dataset/csv/preprocessed_dataset_RTEC_enriched_nd.csv']),
 	%%% Important: instruct the execution script that the recognitions on this dataset will be treated as the ground truth
-	assert( datasetType(ground_truth) ),
+	assertz( datasetType(ground_truth) ),
 	% load the static data
 	consult('../examples/maritime/resources/auxiliary/loadStaticData.prolog'), !.
 

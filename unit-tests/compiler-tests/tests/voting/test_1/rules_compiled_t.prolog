@@ -5,10 +5,10 @@
  ************************************************/
 
 % Some extra declarations have been added in the rules and declarations to allow for unit testing
-:- dynamic maxDuration/3, maxDurationUE/3.
-:- dynamic initiatedAt/4, terminatedAt/4, holdsForSDFluent/2.
+:- dynamic((maxDuration/3, maxDurationUE/3)).
+:- dynamic((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2)).
 
-:- discontiguous initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDuration/3, maxDurationUE/3.
+:- discontiguous((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDuration/3, maxDurationUE/3)).
 
 /*********************
       status(M)

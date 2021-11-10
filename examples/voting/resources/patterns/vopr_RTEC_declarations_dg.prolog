@@ -98,7 +98,7 @@ cyclic(status(_)=voted).
 
 % the declaration below is necessary for SWI Prolog and YAP 6.3:
 % This is probably due to dynamic grounding
-:- dynamic person/1, person_pair/2.
+:- dynamic((person/1, person_pair/2)).
 
 % Define the groundings of the fluents and output entities/events:
 

@@ -9,9 +9,9 @@
 % This file has been produced by a working version of the compiler
 
 % Some extra declarations have been added in the rules and declarations to allow for unit testing
-:- dynamic initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDuration/3, maxDurationUE/3, cyclic/1.
+:- dynamic((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2, maxDuration/3, maxDurationUE/3, cyclic/1)).
 
-:- discontiguous initiatedAt/4, terminatedAt/4, holdsForSDFluent/2.
+:- discontiguous((initiatedAt/4, terminatedAt/4, holdsForSDFluent/2)).
 
 /*********************************** CAVIAR CE DEFINITIONS *************************************/
 

@@ -1,4 +1,4 @@
-:- multifile bigAreaType/2.
+:- multifile(bigAreaType/2).
 
 %Port reasoning
 :-['./portRelatedData/portStatuses.prolog'].

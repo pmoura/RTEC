@@ -55,7 +55,7 @@ Notes:
 
 % manualCSVReader includes predicates for processing CSV files
 % that do NOT exist in YAP, but exist in SWI Prolog
-:- ['manualCSVReader.prolog'].
+:- include('manualCSVReader.prolog').
 
 % needsGrounding/3 is used for dynamic grounding. 
 % points/1 may be defined in the declarations of an event description,
@@ -63,7 +63,7 @@ Notes:
 % will be reported as time-points as opposed to intervals.
 % These predicates are declared dynamic because SWI will complain
 % when they are not defined. 
-:- dynamic needsGrounding/3, points/1.
+:- dynamic((needsGrounding/3, points/1)).
 
 
 % loadIEStreams(+InputStreams, +StartPoint, +EndPoint, +InputStreamPositions, -NewInputStreamPositions)
@@ -182,7 +182,7 @@ assertEvent(Row) :-
 	% get rid of row atom and Arrival time 
 	Row =.. [_RowAtom|[EventLabel|[_ArrivalTime|[OccurenceTime|EventAttributes]]]],
 	Event =.. [EventLabel|EventAttributes],
-	assert( happensAtIE(Event, OccurenceTime) ), !.
+	assertz( happensAtIE(Event, OccurenceTime) ), !.
 
 % the event arrival time or occurrence time is missing
 assertEvent(Row) :-
@@ -198,14 +198,14 @@ assertFluent(Row) :-
 	% check that the fluent should be represented by means of holdsAtIE
 	% points/1 is defined in the declarations of an event description
 	points(Fluent=Value), !, 
-	assert( holdsAtIE(Fluent=Value, OccurenceTime) ).
+	assertz( holdsAtIE(Fluent=Value, OccurenceTime) ).
 	
 % distill from Row the durative instance of Fluent=Value and assert it in the RTEC format 
 assertFluent(Row) :-
 	% get rid of row atom and arrival time 
 	Row =.. [_RowAtom|[FluentLabel|[_ArrivalTime|[StartOccurenceTime|[EndOccurenceTime|[Value|FluentAttributes]]]]]],
 	Fluent =.. [FluentLabel|FluentAttributes],
-	assert( holdsForIESI(Fluent=Value, (StartOccurenceTime,EndOccurenceTime)) ), !.
+	assertz( holdsForIESI(Fluent=Value, (StartOccurenceTime,EndOccurenceTime)) ), !.
 
 % the fluent in the CSV file is not consistent with the declarations of the event description
 % Note: we do not check the attributes of the fluent
@@ -233,6 +233,6 @@ findGroundings(IEType, Row) :-
 	nth0(Index, T, Value),
 	GroundFact =.. [ToGround | [Value]],
 	\+ clause(GroundFact, _Body),
-	assert(GroundFact),
+	assertz(GroundFact),
 	fail.
 	

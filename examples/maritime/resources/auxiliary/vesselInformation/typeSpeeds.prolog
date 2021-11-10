@@ -1,4 +1,4 @@
-:- dynamic typeSpeed/4.
+:- dynamic(typeSpeed/4).
 %min max avg
 typeSpeed(anti-pollution,3.5,7.6,5.5).
 typeSpeed(beacon,0,0.5,0.1).

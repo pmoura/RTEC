@@ -77,49 +77,76 @@ DECLARATIONS:
 
 % ========================
 
-:- set_prolog_flag(toplevel_print_options, [max_depth(400)]).
-:- use_module(library(lists)).
+:- object(rtec).
 
-%:- ['compiler.prolog']. %% After adding indexOf in compiler, some unit tests fail... so comment it for now...
-:- ['inputModule.prolog'].
-:- ['processSimpleFluents.prolog'].
-:- ['processSDFluents.prolog'].
-:- ['processEvents.prolog'].
-:- ['utilities/interval-manipulation.prolog'].
-:- ['utilities/amalgamate-periods.prolog'].
-% Load the dynamic grounding module
-:- ['dynamic grounding/dynamicGrounding.prolog'].
+	:- public(initialiseRecognition/4).
 
-/***** dynamic predicates *****/
+	:- public(eventRecognition/2).
 
-% The predicates below are asserted/retracted
-:- dynamic temporalDistance/1, input/1, noDynamicGrounding/0, preProcessing/1, initTime/1, iePList/4, simpleFPList/4, sdFPList/4, evTList/3, happensAtIE/2, holdsForIESI/2, holdsAtIE/2, processedCyclic/2, initiallyCyclic/1, storedCyclicPoints/3, startingPoints/3.
+	:- public(holdsForProcessedSimpleFluent/3).
 
-% The predicates below may or may not appear in the declarations of an application;
-% thus they must be declared dynamic
-:- dynamic collectIntervals/1, collectIntervals2/2, buildFromPoints/1, buildFromPoints2/2, cyclic/1, maxDuration/3, maxDurationUE/3, internalEntity/1, sDFluent/1.	%simpleFluent/1,  inputEntity/1.
+	:- uses(intervals, [
+		prevTimePoint/2, nextTimePoint/2, gt/2
+	]).
 
-/***** multifile predicates *****/
+	:- uses(list, [
+		append/3, length/2, member/2
+	]).
 
-:- multifile 
-% holdsFor/2 and happensAt/2 are defined in this file and may also be defined in an event description
-holdsFor/2, happensAt/2,
-% these predicates may appear in the data files of an application
-updateSDE/2, updateSDE/3, updateSDE/4,
-% these predicates are used in processSimpleFluent.prolog
-initially/1, initiatedAt/4, terminatedAt/4.
+	:- uses(user, [
+		% these predicates may be part of the declarations of an event description 
+		inputEntity/1, internalEntity/1, outputEntity/1, index/2, event/1,
+		simpleFluent/1, sDFluent/1, grounding/1, dgrounded/2,
+		% these predicates may be part of an event description 
+		holdsFor/2, holdsForSDFluent/2, initially/1, initiatedAt/2,
+		terminatedAt/2, initiates/3, terminates/3, initiatedAt/4,
+		terminatedAt/4, happensAt/2, maxDuration/3, maxDurationUE/3,
+		% these predicates may appear in the data files of an application
+		updateSDE/2, updateSDE/3, updateSDE/4,
+		cachingOrder/1,
+		cachingOrder2/2, happensAtEv/2,
+		collectGrounds/2,
+		eventsPerTimepointThreshold/1, groundTermOverlapThreshold/1
+	]).
 
-/***** discontiguous predicates *****/
+	:- uses(user, [
+		temporalDistance/1, input/1, noDynamicGrounding/0, preProcessing/1,
+		initTime/1, iePList/4, simpleFPList/4, sdFPList/4, evTList/3,
+		happensAtIE/2, holdsForIESI/2, holdsAtIE/2, processedCyclic/2,
+		initiallyCyclic/1, storedCyclicPoints/3, startingPoints/3,
+		collectIntervals/1, collectIntervals2/2, buildFromPoints/1,
+		buildFromPoints2/2, cyclic/1
+	]).
 
-:- discontiguous
-% these predicates are defined in this file 
-happensAtProcessedIE/3, happensAtProcessedSDFluent/3, happensAtProcessedSimpleFluent/3, deadlines1/3,
-% these predicates may be part of the declarations of an event description 
-inputEntity/1, internalEntity/1, outputEntity/1, index/2, event/1, simpleFluent/1, sDFluent/1, grounding/1, dgrounded/2,
-% these predicates may be part of an event description 
-holdsFor/2, holdsForSDFluent/2, initially/1, initiatedAt/2, terminatedAt/2, initiates/3, terminates/3, initiatedAt/4, terminatedAt/4, happensAt/2, maxDuration/3, maxDurationUE/3,
-% this predicate may appear in the data files of an application
-updateSDE/4. 
+	:- dynamic([
+		user::temporalDistance/1, user::input/1, user::noDynamicGrounding/0, user::preProcessing/1,
+		user::initTime/1, user::iePList/4, user::simpleFPList/4, user::sdFPList/4, user::evTList/3,
+		user::happensAtIE/2, user::holdsForIESI/2, user::holdsAtIE/2, user::processedCyclic/2,
+		user::initiallyCyclic/1, user::storedCyclicPoints/3, user::startingPoints/3
+	]).
+
+	:- multifile((
+		% holdsFor/2 and happensAt/2 are defined in this file and may also be defined in an event description
+		user::holdsFor/2, user::happensAt/2,
+		% these predicates may appear in the data files of an application
+		user::updateSDE/2, user::updateSDE/3, user::updateSDE/4,
+		% these predicates are used in processSimpleFluent.prolog
+		user::initially/1, user::initiatedAt/4, user::terminatedAt/4
+	)).
+
+	:- discontiguous([
+		% these predicates are defined in this file 
+		happensAtProcessedIE/3, happensAtProcessedSDFluent/3,
+		happensAtProcessedSimpleFluent/3, deadlines1/3
+	]).
+
+	:- include('inputModule.prolog').
+	:- include('processSimpleFluents.prolog').
+	:- include('processSDFluents.prolog').
+	:- include('processEvents.prolog').
+	:- include('utilities/amalgamate-periods.prolog').
+	% Load the dynamic grounding module
+	:- include('dynamic grounding/dynamicGrounding.prolog').
 
 
 /********************************** INITIALISE RECOGNITION ***********************************/
@@ -127,33 +154,33 @@ updateSDE/4.
 
 
 initialiseRecognition(InputFlag, DynamicGroundingFlag, PreProcessingFlag, TemporalDistance) :-
-	assert(temporalDistance(TemporalDistance)), 
+	assertz(temporalDistance(TemporalDistance)), 
 	% Assert threshold for forget and dynamic grounding mechanisms here 
 	% to avoid carrying these values forever 
-	assert(eventsPerTimepointThreshold(-1)), 
-	assert(groundTermOverlapThreshold(-1)), %
-	(InputFlag=ordered, assert(input(InputFlag)) ; assert(input(unordered))),
+	assertz(eventsPerTimepointThreshold(-1)), 
+	assertz(groundTermOverlapThreshold(-1)), %
+	(InputFlag=ordered, assertz(input(InputFlag)) ; assertz(input(unordered))),
 	% if we need dynamic grounding then dynamicGrounding/1 is already defined
 	% so there is no need to assert anything here
-	(DynamicGroundingFlag=dynamicgrounding ; assert(noDynamicGrounding)),	
+	(DynamicGroundingFlag=dynamicgrounding ; assertz(noDynamicGrounding)),	
 	% if we need preprocessing then preProcessing/1 is already defined
 	% so there is no need to assert anything here
-	(PreProcessingFlag=preprocessing ; assert(preProcessing(_))), !.
+	(PreProcessingFlag=preprocessing ; assertz(preProcessing(_))), !.
 
 
 initialiseRecognition(InputFlag, DynamicGroundingFlag, PreProcessingFlag, ForgetThreshold, DynamicGroundingThreshold, TemporalDistance) :-
-	assert(temporalDistance(TemporalDistance)), 
+	assertz(temporalDistance(TemporalDistance)), 
 	% Assert threshold for forget and dynamic grounding mechanisms here 
 	% to avoid carrying these values forever 
-	assert(eventsPerTimepointThreshold(ForgetThreshold)), 
-	assert(groundTermOverlapThreshold(DynamicGroundingThreshold)), %
-	(InputFlag=ordered, assert(input(InputFlag)) ; assert(input(unordered))),
+	assertz(eventsPerTimepointThreshold(ForgetThreshold)), 
+	assertz(groundTermOverlapThreshold(DynamicGroundingThreshold)), %
+	(InputFlag=ordered, assertz(input(InputFlag)) ; assertz(input(unordered))),
 	% if we need dynamic grounding then dynamicGrounding/1 is already defined
 	% so there is no need to assert anything here
-	(DynamicGroundingFlag=dynamicgrounding ; assert(noDynamicGrounding)),	
+	(DynamicGroundingFlag=dynamicgrounding ; assertz(noDynamicGrounding)),	
 	% if we need preprocessing then preProcessing/1 is already defined
 	% so there is no need to assert anything here
-	(PreProcessingFlag=preprocessing ; assert(preProcessing(_))), !.
+	(PreProcessingFlag=preprocessing ; assertz(preProcessing(_))), !.
 
 
 /************************************* EVENT RECOGNITION *************************************/
@@ -161,8 +188,8 @@ initialiseRecognition(InputFlag, DynamicGroundingFlag, PreProcessingFlag, Forget
 
 eventRecognition(QueryTime, WM) :-
 	InitTime is QueryTime-WM,
-	assert(initTime(InitTime)),
-        % delete input entities that have taken place before or on Qi-WM
+	assertz(initTime(InitTime)),
+	% delete input entities that have taken place before or on Qi-WM
 	forget(InitTime),
 	% calculate the items for which we will perform reasoning
 	dynamicGrounding(InitTime, QueryTime),
@@ -171,20 +198,30 @@ eventRecognition(QueryTime, WM) :-
 	preProcessing(QueryTime),
 	% CYCLES #1 CHANGE
 	prepareCyclic,
-	% CYCLES & DEADLINES CHANGE
-	findall((Index,F=V,SPoints), (startingPoints(Index,F=V,SPoints),retract(startingPoints(Index,F=V,SPoints))), _),
-	% DEADLINES #1 CHANGE
-	findall((F=V,Duration), (maxDuration(F=V,_,Duration), deadlines1(F=V,Duration,InitTime)), _),
-	% the order in which entities are processed makes a difference
-	% start from lower-level entities and then move to higher-level entities
-	% in this way the higher-level entities will use the CACHED lower-level entities
-	% the order in which we process entities is set by cachingOrder/1 
-	% which is specified in the domain-dependent file 
-	% cachingOrder2/2 is produced in the compilation stage 
-	% by combining cachingOrder/1, indexOf/2 and grounding/1
-	findall(OE, (cachingOrder2(Index,OE), processEntity(Index,OE,InitTime,QueryTime)), _),
-	% DEADLINES #2 CHANGE
-	findall((F=V,Duration), (maxDuration(F=V,_,Duration), deadlines2(F=V,Duration,InitTime)), _),
+	(	% CYCLES & DEADLINES CHANGE
+		startingPoints(Index,F=V,SPoints),
+		retract(startingPoints(Index,F=V,SPoints)),
+		fail
+	;	% DEADLINES #1 CHANGE
+		maxDuration(F=V,_,Duration),
+		deadlines1(F=V,Duration,InitTime),
+		fail
+	;	% the order in which entities are processed makes a difference
+		% start from lower-level entities and then move to higher-level entities
+		% in this way the higher-level entities will use the CACHED lower-level entities
+		% the order in which we process entities is set by cachingOrder/1 
+		% which is specified in the domain-dependent file 
+		% cachingOrder2/2 is produced in the compilation stage 
+		% by combining cachingOrder/1, indexOf/2 and grounding/1
+		cachingOrder2(Index,OE),
+		processEntity(Index,OE,InitTime,QueryTime),
+		fail
+	;	% DEADLINES #2 CHANGE
+		maxDuration(F=V,_,Duration),
+		deadlines2(F=V,Duration,InitTime),
+		fail
+	;	true
+	),
 	retract(initTime(InitTime)).
 
 processEntity(Index, OE, InitTime, QueryTime) :-
@@ -226,7 +263,7 @@ deadlines1(F=V, Duration, InitTime) :-
 	% find the deadline attempt that satisfies conditions (b) and (c) mentioned above
 	% this predicate is defined below
 	findDeadlineAttempt(ListofDeadlineAttempts, Attempt, InitTime, Duration), 
-	assert( evTList(Index, attempt(F=V), Attempt) ).
+	assertz( evTList(Index, attempt(F=V), Attempt) ).
 	
 % === find the deadline attempt that satisfies conditions (b) and (c) mentioned above	 ===
 findDeadlineAttempt([], [], _, _) :- !.	
@@ -279,7 +316,7 @@ deadlines1(F=V, Duration, InitTime) :-
 	prevTimePoint(S,PrevS), EarlyT=PrevS, 
 	% ListofDeadlineAttempts is sorted
 	!,
-	assert( evTList(Index, attempt(F=V), [Attempt]) ).
+	assertz( evTList(Index, attempt(F=V), [Attempt]) ).
 
 % deadlines2/1 computes and stores the deadline attempts
 
@@ -304,8 +341,8 @@ deadlines2(F=V, Duration, InitTime) :-
 	maxDurationUE(F=V, _, Duration), !,
 	indexOf(Index, F=V),
 	startingPoints(Index, F=V, SPoints),
-	findall(T, 
-		(member(S,SPoints), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration), 
+	findall(T,
+		(member(S,SPoints), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration),
 	NewList),
 	% the predicate below is defined in processEvents.prolog
 	updateevTList(Index, attempt(F=V), NewList).
@@ -320,7 +357,7 @@ deadlines2(F=V, Duration, InitTime) :-
 	simpleFPList(Index, F=V, I1, I2),
 	amalgamatePeriods(I2, I1, I),
 	findall(T, 
-		(member((S,_),I), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration), 
+		(member((S,_),I), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration),
 	NewList),
 	append(List, NewList, AppendedList),
 	% the predicate below is defined in processEvents.prolog
@@ -332,7 +369,7 @@ deadlines2(F=V, Duration, InitTime) :-
 	simpleFPList(Index, F=V, I1, I2),
 	amalgamatePeriods(I2, I1, I),
 	findall(T, 
-		(member((S,_),I), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration), 
+		(member((S,_),I), prevTimePoint(S,PrevS), PrevS>InitTime, T is PrevS+Duration),
 	NewList),
 	% the predicate below is defined in processEvents.prolog
 	updateevTList(Index, attempt(F=V), NewList).
@@ -343,9 +380,17 @@ deadlines2(F=V, Duration, InitTime) :-
 prepareCyclic :-
 	% check if there are cycles in the event description
 	cyclic(_), !,
-	findall((Index,F=V,L), (storedCyclicPoints(Index,F=V,L), retract(storedCyclicPoints(Index,F=V,L))), _),
-	findall((Index,F=V), (processedCyclic(Index,F=V), retract(processedCyclic(Index,F=V))), _),
-	findall(F=V, (initiallyCyclic(F=V), retract(initiallyCyclic(F=V))), _),
+	(	storedCyclicPoints(Index,F=V,L),
+		retract(storedCyclicPoints(Index,F=V,L)),
+		fail
+	;	processedCyclic(Index,F=V), 
+		retract(processedCyclic(Index,F=V)),
+		fail
+	;	initiallyCyclic(F=V),
+		retract(initiallyCyclic(F=V)),
+		fail
+	;	true
+	),
 	assertInitiallyCyclic.
 prepareCyclic.
 
@@ -360,22 +405,22 @@ assertInitiallyCyclic :-
 	    simpleFPList(Index, F=V, I1, I2),
 	    amalgamatePeriods(I2, I1, I),
 	    tinIntervals(NextInitTime, I),
-	    assert(initiallyCyclic(F=V))), 
+	    assertz(initiallyCyclic(F=V))),
 	  _).
 assertInitiallyCyclic :-
 	 % InitTime=<0
-	 findall(F=V, 
+	 findall(F=V,
 	  (
 	    cyclic(F=V),
 	    grounding(F=V),
 	    %initially(F=V),
 	    initiatedAt(F=V, -1, -1, 0),
-	    assert(initiallyCyclic(F=V))), 
+	    assertz(initiallyCyclic(F=V))),
 	  _).
 	  
-assertCyclic(Index, F=V) :- 
-	  cyclic(F=V), !,
-	  assert(processedCyclic(Index, F=V)).
+assertCyclic(Index, F=V) :-
+	cyclic(F=V), !,
+	assertz(processedCyclic(Index, F=V)).
 assertCyclic(_, _).
 
 % T is ground when evaluating holdsAt
@@ -402,13 +447,13 @@ holdsAtCyclic(Index, F=V, T) :-
 % store that we failed to prove holdsAt(F=V, T)
 holdsAtCyclic(Index, F=V, T) :-
 	addCyclicPoint(Index, F=V, T, f), !, false.
-	
-	
+
+
 lastPointBeforeOrOnT(T, [(X,Val)], (X,Val)) :- !, X=<T.	
 lastPointBeforeOrOnT(T, [(X1,Val1),(X2,_)|_], (X1,Val1)) :- X1=<T, X2>T, !.	
 lastPointBeforeOrOnT(T, [(X,_)|Rest0], R) :-
 	X<T, lastPointBeforeOrOnT(T, Rest0, R).		
-	
+
 findFluentVal(_Index, _U, T, (T,Val)) :- !, Val=t.
 findFluentVal(Index, F=V, T, (Point,t)) :-
 	notBrokenOrReInitiated(Index, F=V, Point, T), !,
@@ -422,7 +467,7 @@ findFluentVal(Index, F=V, T, (Point,f)) :-
 	addCyclicPoint(Index, F=V, T, t).
 findFluentVal(Index, F=V, T, (_Point,f)) :-
 	addCyclicPoint(Index, F=V, T, f), !, false.
-	
+
 % we are looking in the interval [Ts,Te)
 notBrokenOrReInitiated(_, _, Ts, Te) :- Ts>=Te, !.
 notBrokenOrReInitiated(Index, F=V, Ts, Te) :-
@@ -434,7 +479,7 @@ notBrokenOrReInitiated(_, _, _, _).
 
 % we are looking in the interval [Ts,Te)
 brokenOnce(Index, F=V1, Ts, T, Te) :-
-	simpleFluent(F=V2), \+V2=V1,
+	simpleFluent(F=V2), V2 \= V1,
 	startedBetween(Index, F=V2, Ts, T, Te), !.
 brokenOnce(_Index, F=V, Ts, T, Te) :-
 	terminatedAt(F=V, Ts, T, Te), !.
@@ -463,35 +508,35 @@ initPointBetween(Index, F=V, Ts, T, Te) :-
 	initiatedAt(F=V, NextTs, T, Te), !,
 	addStartingPoint(Index, F=V, T).
 
-	
+
 addStartingPoint(Index, F=V, InitPoint) :-
 	retract(startingPoints(Index, F=V, SPoints)), !,
 	nextTimePoint(InitPoint, SPoint),
 	insertNo(SPoint, SPoints, NewSPoints),
-	assert(startingPoints(Index, F=V, NewSPoints)).
+	assertz(startingPoints(Index, F=V, NewSPoints)).
 addStartingPoint(Index, F=V, InitPoint) :-
 	nextTimePoint(InitPoint, SPoint),
-	assert(startingPoints(Index, F=V, [SPoint])).
-	
+	assertz(startingPoints(Index, F=V, [SPoint])).
+
 addCyclicPoint(Index, F=V, T, Val) :-
 	retract(storedCyclicPoints(Index, F=V, OldCPoints)), !, 
 	insertTuple((T,Val), OldCPoints, NewCPoints),
-	assert(storedCyclicPoints(Index, F=V, NewCPoints)).
+	assertz(storedCyclicPoints(Index, F=V, NewCPoints)).
 addCyclicPoint(Index, F=V, T, Val) :-
-	assert(storedCyclicPoints(Index, F=V, [(T,Val)])).	
+	assertz(storedCyclicPoints(Index, F=V, [(T,Val)])).	
 
 insertNo(X, [], [X]).
 insertNo(X, [X|Rest], [X|Rest]) :- !.
 insertNo(X, [Y|Rest], [X,Y|Rest]) :- X<Y, !.
 insertNo(X, [Y|Rest0], [Y|Rest]) :- 
-	insertNo(X, Rest0, Rest).		
-	
+	insertNo(X, Rest0, Rest).
+
 insertTuple(X, [], [X]) :- !.
 insertTuple((X,Val), [(X,Val)|Rest], [(X,Val)|Rest]) :- !.
 insertTuple((X,Val), [(Y,Val2)|Rest], [(X,Val),(Y,Val2)|Rest]) :- X<Y, !.
 insertTuple(X, [Y|Rest0], [Y|Rest]) :-
 	insertTuple(X, Rest0, Rest).
-	
+
 /******************* entity index: use of cut to avoid backtracking *********************/
 
 indexOf(Index, E) :-
@@ -527,7 +572,7 @@ holdsForProcessedSDFluent(_Index, _U, []).
 
 % processed input entity/statically determined fluent
 holdsAtProcessedIE(Index, F=V, T) :- 
-  	iePList(Index, F=V, [H|Tail], _),
+	iePList(Index, F=V, [H|Tail], _),
 	tinIntervals(T, [H|Tail]).
 
 % cached simple fluent
@@ -537,7 +582,7 @@ holdsAtProcessedSimpleFluent(Index, F=V, T) :-
 
 % cached output entity/statically determined fluent
 holdsAtProcessedSDFluent(Index, F=V, T) :- 
-  	sdFPList(Index, F=V, [H|Tail], _),
+	sdFPList(Index, F=V, [H|Tail], _),
 	tinIntervals(T, [H|Tail]).
 
 % statically determined fluent that is neither an input entity nor an output entity
@@ -578,7 +623,7 @@ happensAtProcessedSDFluent(Index, startI(F=V), S) :-
 happensAtProcessedSDFluent(Index, startI(F=V), S) :-
 	sdFPList(Index, F=V, [H|Tail], []), 
 	member((S,_E), [H|Tail]).
-	
+
 % compute the starting points of processed input entities/statically determined fluents
 happensAtProcessedIE(Index, start(F=V), T) :-
 	iePList(Index, F=V, [(IntervalBreakingPoint,_)|Tail], [(_,IntervalBreakingPoint)]), 
@@ -613,42 +658,42 @@ happensAtProcessedSDFluent(Index, start(F=V), T) :-
 % compute the ending points of processed input entities/statically determined fluents
 happensAtProcessedIE(Index, end(F=V), E) :-
 	iePList(Index, F=V, [H|Tail], _), 
-	member((_S,E), [H|Tail]), \+ E=inf.
+	member((_S,E), [H|Tail]), E \= inf.
 % compute the ending points of simple fluents
 happensAtProcessedSimpleFluent(Index, end(F=V), E) :-
 	simpleFPList(Index, F=V, [H|Tail], _),
-	member((_S,E), [H|Tail]), \+ E=inf.
+	member((_S,E), [H|Tail]), E \= inf.
 % compute the ending points of output entities/statically determined fluents
 happensAtProcessedSDFluent(Index, endO(F=V), E) :-
 	sdFPList(Index, F=V, [H|Tail], _), 
-	member((_S,E), [H|Tail]), \+ E=inf.
+	member((_S,E), [H|Tail]), E \= inf.
 % compute the ending points of statically determined fluents
 % that are neither input nor output entities, ie these fluents are not cached
 happensAtSDFluent(endO(F=V), E) :-
 	holdsForSDFluent(F=V, [H|Tail]), 
-	member((_S,E), [H|Tail]), \+ E=inf.
+	member((_S,E), [H|Tail]), E \= inf.
 */
 % compute the ending points of processed input entities/statically determined fluents
 happensAtProcessedIE(Index, end(F=V), T) :-
 	iePList(Index, F=V, [H|Tail], _), 
 	member((_S,E), [H|Tail]), 
-	\+ E=inf, prevTimePoint(E, T).
+	E \= inf, prevTimePoint(E, T).
 % compute the ending points of simple fluents
 happensAtProcessedSimpleFluent(Index, end(F=V), T) :-
 	simpleFPList(Index, F=V, [H|Tail], _),
 	member((_S,E), [H|Tail]), 
-	\+ E=inf, prevTimePoint(E, T).
+	E \= inf, prevTimePoint(E, T).
 % compute the ending points of output entities/statically determined fluents
 happensAtProcessedSDFluent(Index, end(F=V), T) :-
 	sdFPList(Index, F=V, [H|Tail], _), 
 	member((_S,E), [H|Tail]), 
-	\+ E=inf, prevTimePoint(E, T).
+	E \= inf, prevTimePoint(E, T).
 % compute the ending points of statically determined fluents
 % that are neither input nor output entities, ie these fluents are not cached
 happensAtSDFluent(end(F=V), T) :-
 	holdsForSDFluent(F=V, [H|Tail]), 
 	member((_S,E), [H|Tail]), 
-	\+ E=inf, prevTimePoint(E, T).
+	E \= inf, prevTimePoint(E, T).
 
 %%%% happensAtProcessed for non-special events
 
@@ -663,7 +708,7 @@ happensAtProcessed(Index, E, T) :-
 %%%%%%% holdsFor is used ONLY for user interaction
 %%%%%%% use iePList/simpleFPList/sdFPList and look no further
 
-holdsFor(F=V, L) :-
+user::holdsFor(F=V, L) :-
 	retrieveIntervals(F=V, L).
 
 % retrieve the intervals of input entities (those for which we collect their intervals)
@@ -716,7 +761,8 @@ retrieveOESDFluentIntervals(_Index, _U, []).
 %%%%%%% holdsAt is used ONLY for user interaction
 % T should be given
 
-holdsAt(F=V, T) :-
+:- multifile(user::holdsAt/2).
+user::holdsAt(F=V, T) :-
 	holdsFor(F=V, [H|Tail]),
 	tinIntervals(T, [H|Tail]).
 
@@ -729,15 +775,16 @@ tinIntervals(T, L) :-
 %%%%%%% happensAt is used ONLY for user interaction
 
 % retrieve the time-points of input entities
-happensAt(E, T) :-
+user::happensAt(E, T) :-
 	inputEntity(E),
 	happensAtIE(E, T).
 
 % retrieve the time-points of output entities
-happensAt(E, T) :-
+user::happensAt(E, T) :-
 	event(E), 
 	% cachingOrder2/2 is produced in the compilation stage 
 	% by combining cachingOrder/1, indexOf/2 and grounding/1
 	cachingOrder2(Index, E),
 	happensAtProcessed(Index, E, T).
 
+:- end_object.

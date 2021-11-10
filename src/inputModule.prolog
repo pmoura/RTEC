@@ -16,18 +16,27 @@ forget(InitTime) :-
 	forgetEntity(InitTime, holdsAtIE, EventsPerTimepointThreshold),
 	%findall(U, (holdsAtIE(U, T), T=<InitTime, retract(holdsAtIE(U, T))), _),	
 	% forget the intervals of input entities/statically determined fluents
-	findall(E, (holdsForIESI(E, (Start,End)), dealWithInputFluents(E, Start, End, InitTime, NewInitTime)), _).
+	(	holdsForIESI(E, (Start,End)),
+		dealWithInputFluents(E, Start, End, InitTime, NewInitTime),
+		fail
+	;	true
+	).
 
 % the rule below deals with the case in which the input stream is temporally sorted
 
 forget(InitTime) :-
 	nextTimePoint(InitTime, NewInitTime),
-	% forget input entities/events
-	findall(E, dealWithInputEvents(E, InitTime), _),
-	% forget the instances (time-points) of input entities/statically determined fluents
-	findall(U, dealWithInputFluentsT(U, InitTime), _),	
-	% forget the intervals of input entities/statically determined fluents
-	findall(U, dealWithInputFluentsI(U, InitTime, NewInitTime), _).
+	(	% forget input entities/events
+		dealWithInputEvents(_, InitTime),
+		fail
+	;	% forget the instances (time-points) of input entities/statically determined fluents
+		dealWithInputFluentsT(_, InitTime),
+		fail
+	;	% forget the intervals of input entities/statically determined fluents
+		dealWithInputFluentsI(_, InitTime, NewInitTime),
+		fail
+	;	true
+	).
 
 % This predicate removes all instances of EntityName(= happensAtIE/holdsAtIE) before InitTime.
 % The number of events and time-points before InitTime, as well as EventsPerTimepointThreshold decide which retract predicate will be used.
@@ -87,8 +96,8 @@ dealWithInputFluents(E, Start, End, InitTime, _NewInitTime) :-
 % if the entity starts before or on Qi-WM and ends after Qi-WM then break it
 dealWithInputFluents(E, Start, End, _InitTime, NewInitTime) :-
 	retract(holdsForIESI(E,(Start,End))), !, 
-	\+ NewInitTime=End,
-	assert(holdsForIESI(E,(NewInitTime,End))). 
+	NewInitTime \= End,
+	assertz(holdsForIESI(E,(NewInitTime,End))). 
 
 
 % stop looking after InitTime=Qi-WM
@@ -120,9 +129,9 @@ dealWithInputFluentsI(U, InitTime, NewInitTime) :-
 		retract(holdsForIESI(U, (Start, End)))
 		;		
 		End>InitTime, 
-		\+ NewInitTime=End,
+		NewInitTime \= End,
 		retract(holdsForIESI(U, (Start, End))), 
-		assert(holdsForIESI(U, (NewInitTime, End)))
+		assertz(holdsForIESI(U, (NewInitTime, End)))
 	).
 
 %% zip predicate %% 
@@ -197,7 +206,7 @@ processIEBuildFP(Index, F=V, _InitTime, QueryTime) :-
 updateiePList(_Index, _U, [], []) :- !.
 
 updateiePList(Index, F=V, NewPeriods, BrokenPeriod) :- 
-	assert(iePList(Index, F=V, NewPeriods, BrokenPeriod)).
+	assertz(iePList(Index, F=V, NewPeriods, BrokenPeriod)).
 
 
 %%%%%%% holdsForIE --- collectIntervals
