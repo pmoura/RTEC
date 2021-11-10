@@ -6,5 +6,6 @@
 	logtalk_load('dataset/prolog/appearance.prolog', [hook(directives_hook)]),
 	logtalk_load('dataset/prolog/movementB.prolog', [hook(directives_hook)]),
 	logtalk_load('dataset/prolog/updateSDE-caviar.prolog', [hook(directives_hook)]),
+	logtalk_load('dataset/auxiliary/list-of-ids.prolog'),
 	rtec::initialiseRecognition(ordered, nodynamicgrounding, preprocessing, -1, -1, 40)
 )).
