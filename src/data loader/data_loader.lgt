@@ -52,6 +52,17 @@ Notes:
 
 *************************************************************************************************/
 
+:- object(data_loader).
+
+	:- public([
+		loadIEStreams/5,
+		loadSingleIEStream/5
+	]).
+
+	:- uses(user, [
+		event/1, inputEntity/1, sDFluent/1,
+		happensAtIE/2, holdsAtIE/2, holdsForIESI/2
+	]).
 
 % manualCSVReader includes predicates for processing CSV files
 % that do NOT exist in YAP, but exist in SWI Prolog
@@ -147,13 +158,13 @@ getIEFromRowandAssertIt(Row) :-
 	getRowArgument(1, Row, IElabel),
 	(
 		% check whether the given input entity is an event
-		event(E), E=..[IElabel|_], inputEntity(E), !, 
+		event(E), functor(E, IElabel, _), inputEntity(E), !, 
 		% assertEvent(+Row),
 		% distill from Row the event instance and assert it 
 		assertEvent(Row)
 		;
 		% check whether the given input entity is a statically determined fluent	
-		inputEntity(F=V), F=..[IElabel|_], sDFluent(F=V), !,
+		inputEntity(F=V), functor(F, IElabel, _), sDFluent(F=V), !,
 		% assertFluent(+Row)	
 		% distill from Row the fluent instance and assert it 
 		assertFluent(Row)
@@ -164,7 +175,7 @@ getIEFromRowandAssertIt(Row) :-
 % Row contains neither an input event 
 % not an input statically determined fluent 
 getIEFromRowandAssertIt(Row) :-
-	write('ERROR IN INPUT CSV; LINE: '), writeln(Row).
+	write('ERROR IN INPUT CSV; LINE: '), write(Row), nl.
 
 
 % getRowArgument(+N, +Row, -Arg)
@@ -186,7 +197,7 @@ assertEvent(Row) :-
 
 % the event arrival time or occurrence time is missing
 assertEvent(Row) :-
-	write('ERROR IN INPUT CSV; LINE: '), writeln(Row).
+	write('ERROR IN INPUT CSV; LINE: '), write(Row), nl.
 
 
 % assertFluent(+Row)	
@@ -210,7 +221,7 @@ assertFluent(Row) :-
 % the fluent in the CSV file is not consistent with the declarations of the event description
 % Note: we do not check the attributes of the fluent
 assertFluent(Row) :-
-	write('ERROR IN INPUT CSV; LINE: '), writeln(Row).
+	write('ERROR IN INPUT CSV; LINE: '), write(Row), nl.
 
 
 % this predicate deals with dynamic grounding
@@ -236,3 +247,4 @@ findGroundings(IEType, Row) :-
 	assertz(GroundFact),
 	fail.
 	
+:- end_object.

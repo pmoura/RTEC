@@ -10,8 +10,13 @@ Written by: Elias Alevizos
 
 *************************************************************************************************/
 
-:- use_module(library(readutil)).
-:- use_module(library(lists)).
+:- uses(reader, [
+	line_to_codes/2 as read_line_to_codes/2
+]).
+
+:- uses(list, [
+	append/3, nth0/3, reverse/2
+]).
 
 
 get_row_from_line(_Stream,[],end_of_file,end_of_file).
@@ -86,10 +91,11 @@ check_if_number([Code|MoreCodes]) :-
 	check_if_number(MoreCodes).
 	
 		
-	
+
 attempt_to_number(AtomField,Field) :-
 	(
-	atom_number(AtomField,Field),
+	atom_codes(AtomField, Codes),
+	catch(number_codes(Field, Codes), _, fail),
 	!
 	;
 	AtomField='',
