@@ -79,11 +79,12 @@ DECLARATIONS:
 
 :- object(rtec).
 
-	:- public(initialiseRecognition/4).
-
-	:- public(eventRecognition/2).
-
-	:- public(holdsForProcessedSimpleFluent/3).
+	:- public([
+		initialiseRecognition/4,
+		initialiseRecognition/6,
+		eventRecognition/2,
+		holdsForProcessedSimpleFluent/3
+	]).
 
 	:- uses(intervals, [
 		prevTimePoint/2, nextTimePoint/2, gt/2
