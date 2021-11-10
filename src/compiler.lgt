@@ -48,40 +48,6 @@ compileEventDescription(Declarations, Rules) :-
 	logtalk_load(Rules, [hook(hook_pipeline([directives_hook,compiler(rules)]))]).
 %	close(Stream),
 %	logtalk_load(OutputDescription, [hook(directives_hook)]).
-
-compileEventDescription(Declarations, InputDescription, OutputDescription) :- 
-	consult(Declarations),
-	consult(InputDescription),
-	tell(OutputDescription),
-	% compile initially/1 rules	
-	compileInitially.
-
-% compile initiatedAt/2 rules
-compileEventDescription(_, _, _) :- compileInitiatedAt.
-% compile terminatedAt/2 rules
-compileEventDescription(_, _, _) :- compileTerminatedAt.
-% compile initiates/3 rules
-compileEventDescription(_, _, _) :- compileInitiates.
-% compile terminates/3 rules
-compileEventDescription(_, _, _) :- compileTerminates.
-% compile holdsFor/2 rules
-compileEventDescription(_, _, _) :- compileHoldsFor.
-% compile holdsAt/2 rules
-compileEventDescription(_, _, _) :- compileHoldsAt.
-% compile happensAt/2 rules
-compileEventDescription(_, _, _) :- compileHappensAt.
-% compile cachingOrder/1 declarations:
-% combine cachingOrder/1, grounding/1 and indexOf/2 to produce cachingOrder2/2
-compileEventDescription(_, _, _) :- compileCachingOrder.
-% compile collectIntervals/1 declarations: 
-% combine collectIntervals/1, grounding/1 and indexOf/2 to produce collectIntervals2/2
-compileEventDescription(_, _, _) :- compileCollectIntervals.
-% compile buildFromPoints/1 declarations:
-% combine buildFromPoints/1, grounding/1 and indexOf/2 to produce buildFromPoints2/2
-compileEventDescription(_, _, _) :- compileBuildFromPoints.
-compileEventDescription(_, InputDescription, _) :- compileAnythingElse(InputDescription).
-% close the new event description file
-compileEventDescription(_, _, _) :-  told, !.
 */
 
 term_expansion(begin_of_file, begin_of_file) :-
@@ -264,38 +230,6 @@ compileBuildFromPoints(Clause) :-
 	indexOf(Index, F=V),	 
 	Clause = (buildFromPoints2(Index, F=V) :- Body).
 
-/*
-%compile for anything other than the EC predicates
-compileAnythingElse(InputDescription) :-
-	% predicate_property, for some reason, requires absolute path.
-	% First check if InputDescription is absolute, else construct absolute path
-	%(
-	%is_absolute_file_name(InputDescription),
-	%InputFullPath = InputDescription
-	%;
-	%working_directory(Cwd,Cwd),
-	%atom_concat(Cwd,InputDescription,InputFullPath)
-	%),
-	absolute_file_name(InputDescription,[extensions([''])],InputFullPath),
-	%predicate_property(Head,file(InputFullPath)),
-	source_file(UserHead,InputFullPath),
-	(UserHead = user:Head
-	;
-	UserHead\= user:Head, Head = UserHead),
-	Head =.. [HeadPredicate|_],
-	\+ member(HeadPredicate,[initially, initiatedAt, terminatedAt, initiates,
-				terminates, holdsFor, holdsAt, happensAt]),
-	clause(Head,Body),
-	write(Head),		
-	(
-		Body = true
-		;
-		Body \= true,
-		write(' :- '), nl,
-		tab(5), write(Body) 
-	),
-	write('.'), nl, nl, fail.
-*/
 %%%%%%%% compile body predicates %%%%%%%%
 
 %%%% recursive definition of compileConditions/4 %%%%
@@ -784,9 +718,3 @@ compileConditions1(Something, Something, _Timespan, _Cyclic).
 compileConditions1(Something, _T1, _T2, Something).
 
 :- end_object.
-
-
-%:- object(compiler,
-%	extends(compiler(_Kind_))).
-%
-%:- end_object.
