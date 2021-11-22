@@ -105,19 +105,24 @@ findRemainingTerms([(Event,GroundTerm)|Other],OldTerms,NewTerms):-
     append(OldTerms,CurrentTerms,TermsSoFar),
     findRemainingTerms(Other,TermsSoFar,NewTerms).
 
-removeOutdated:-
-    % find all fluent value pairs whose arguments are dynamic-grounded in this window.
-    % FVPs who had a open interval are not retracted because they were dynamic-grounded in this window by findRemainingTerms.
-    findall((Index, F=V), (simpleFPList(Index, F=V, RestrictedList, Extension), \+cachingOrder2(Index, F=V), 
-                           retract(simpleFPList(Index, F=V, RestrictedList, Extension))), _SimpleFluentList),
-    %
-    findall((Index, F=V), (sdFPList(Index, F=V, RestrictedList, Extension), \+cachingOrder2(Index, F=V), 
-                           retract(sdFPList(Index, F=V, RestrictedList, Extension))), _SDFluentList), 
-    %
-    findall((Index, F=V), (iePList(Index, F=V, RestrictedList, Extension), \+cachingOrder2(Index, F=V), 
-                           retract(iePList(Index, F=V, RestrictedList, Extension))), _InputSDFluentList).
-    %length(SimpleFluentList, SFLLen), 
-    %write(SFLLen), nl.
+% find all fluent value pairs whose arguments are dynamic-grounded in this window.
+% FVPs who had a open interval are not retracted because they were dynamic-grounded in this window by findRemainingTerms.
+removeOutdated :-
+    simpleFPList(Index, F=V, RestrictedList, Extension),
+	\+ cachingOrder2(Index, F=V),
+	retract(simpleFPList(Index, F=V, RestrictedList, Extension)),
+	fail.
+removeOutdated :-
+	sdFPList(Index, F=V, RestrictedList, Extension),
+	\+ cachingOrder2(Index, F=V),
+	retract(sdFPList(Index, F=V, RestrictedList, Extension)),
+	fail.
+removeOutdated :-
+	iePList(Index, F=V, RestrictedList, Extension),
+	\+ cachingOrder2(Index, F=V),
+	retract(iePList(Index, F=V, RestrictedList, Extension)),
+	fail.
+removeOutdated.
 
 % assert_grounding(+Term)
 assert_grounding([]).
